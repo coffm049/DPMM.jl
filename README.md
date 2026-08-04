@@ -1,81 +1,43 @@
-# DPMM.jl
+# Vendored DPMM (DPMM.jl v0.1.0)
 
-[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://ekinakyurek.github.io/DPMM.jl/latest)
-[![](https://travis-ci.org/ekinakyurek/DPMM.jl.svg?branch=master)](https://travis-ci.org/ekinakyurek/DPMM.jl)
+Patched copy of [`ekinakyurek/DPMM.jl`](https://github.com/ekinakyurek/DPMM.jl)
+kept under `simulations/vendor/DPMM` so the package ships with the paper code
+and any compatibility patches travel to the HPC cluster.
 
-This repository is a research work on parallel dirichlet process mixture models and clustering on Julia by Ekin Akyürek with supervision of John W. Fischer III.
+## Why patch
 
-## Getting Started
+`DPMM.jl` (module `DPMM`) is the only DPM package that installs on the modern
+Julia used by this project (`1.11.x`). It is old code that uses symbols
+removed from modern `Distributions`/Julia, so the vendored copy is patched:
 
-Demo:
+- `src/DPMM.jl` — drop the removed imports (`GLOBAL_RNG`, `ZeroVector`,
+  `NoArgCheck`, `multiply!`, `unwhiten_winv!`) and define compatibility
+  shims:
+  - `const GLOBAL_RNG = Random.GLOBAL_RNG`
+  - `ZeroVector(T, n) = zeros(T, n)`
+  - `unwhiten_winv!(W, x) = PDMats.unwhiten!(inv(W), x)`
+- `src/Core/niw.jl` — `_wishart_genA!(rng, A, df)` (modern Distributions
+  drops the `p` argument).
+- `src/Core/dirichletmultinomial.jl` — relax `randlogdir`/`_rand!` from
+  `Random.MersenneTwister` to `Random.AbstractRNG` (the default `GLOBAL_RNG`
+  is now a `TaskLocalRNG`).
+- `Project.toml` — drop unused `AbstractPlotting`/`ArgParse` deps
+  (`AbstractPlotting` was removed from the General registry).
+
+Usage (baseline): `DPMM.fit(X; algorithm=DPMM.SplitMergeAlgorithm, α=..., T=...)`
+with **columns = observations**.
+
+## Install in the simulations environment (local and HPC)
+
+The package is developed as a path dependency so the local `Manifest.toml`
+points at the vendored copy. On a fresh clone (HPC), re-bind it:
+
 ```julia
-  gm = GridMixture(2)
-  X, clabels = rand_with_label(gm,100000)
-  fit(X; ncpu=3) # runs parallel split-merge algorithm
+import Pkg
+Pkg.activate("simulations")
+Pkg.develop(path="simulations/vendor/DPMM")
+Pkg.resolve()
 ```
 
-Visual Demo (requires OpenGL) :
-```julia
-  gm = GridMixture(2)
-  X, clabels = rand_with_label(gm,100000)
-  scene = setup_scene(X)
-  fit(X; ncpu=3, scene=scene) # visualize parallel split-merge algorithm
-```
-For details please see the [function documentation](https://ekinakyurek.github.io/DPMM.jl/latest)
-
-## [Technical Report](./docs/main.tex)
-
-## Algorithms
-
-1. Collapsed Gibbs Sampler
-```julia
-labels = fit(X; algorithm=CollapsedAlgorithm) # serial collapsed
-```
-2. Quasi-Collapsed Gibbs Sampler
-```julia
-labels = fit(X; algorithm=CollapsedAlgorithm, quasi=true) # quasi & serial collapsed
-labels = fit(X; algorithm=CollapsedAlgorithm, quasi=true, ncpu=4) # quasi & parallel collapsed
-```
-3. Direct Gibbs Sampler
-```julia
-labels = fit(X; algorithm=DirectAlgorithm) # direct
-labels = fit(X; algorithm=DirectAlgorithm ncpu=4) # parallel direct
-```
-4. Quasi-Direct Gibbs Sampler
-```julia
-labels = fit(X; algorithm=DirectAlgorithm, quasi=true) # quasi direct gibbs algorithm
-labels = fit(X; algorithm=DirectAlgorithm, quasi=true, ncpu=4) # quasi & parallel direct gibbs direct gibbs
-```
-5. Split-Merge Gibbs Sampler
-```julia
-labels = fit(X; algorithm=SplitMergeAlgorithm) # split-merge
-labels = fit(X; algorithm=SplitMergeAlgorithm, ncpu=4) # parallel split-merge
-```
-
-##  Parallel Benchmarking
-
-Run below command:
-```SHELL
-julia --project test/parallel_benchmark.jl  --N 1000000 --K 6 --Kinit 1 --ncpu 4
-```
-
-* Results-I: Time (sec) to run 100 DP-GMM iterations for d=2, N=1e6, K=6.
-
-
-Code        |   ncpu=1  |   ncpu=2  | ncpu=4 | ncpu=8 |
------------ | --------- | --------- | ------ | ------ |
-C++         | 76.94     |   40.57   |  22.23 |  13.01      
-DPMM.jl     | 75.71     |   41.54   |  20.86 |  12.77      
-Julia-BNP   | 1101.97   |   572.50  | 345.58 | 172.30  
-
-
-* Results-II: Time (sec) to run 100 DP-MNMM iterations for d=100, N=1e6, K=6.
-
-
-Code        |   ncpu=1  |   ncpu=2  | ncpu=4 | ncpu=8 |
------------ | --------- | --------- | ------ | ------ |
-C++         | 134.25    | 77.55     | 40.97  | 23.60  
-DPMM.jl     | 113.131   | 68.46     | 45.55  | 30.79
-Julia-BNP   | 234.40    | 136.43    | 87.34  | 55.10  
-
-
+Then `simulations/Project.toml` lists `DPMM` and the scripts can
+`using DPMM`.

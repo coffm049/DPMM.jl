@@ -49,7 +49,7 @@ end
 function randWishart(S::AbstractPDMat{T}, df::Real) where T
     p = dim(S)
     A = zeros(T,p,p)
-    _wishart_genA!(GLOBAL_RNG, p, df, A)
+    _wishart_genA!(GLOBAL_RNG, A, df)
     unwhiten!(S, A)
     A .= A * A'
 end

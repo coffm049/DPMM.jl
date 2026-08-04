@@ -11,17 +11,27 @@ const colorpalette  = RGBA.(palette("Set3", 12))
 import SparseArrays: AbstractSparseMatrix, AbstractSparseVector, nonzeroinds, nonzeros
 
 
-import Distributions: _rand!, partype, AbstractRNG, multiply!, DirichletCanon,
+import Distributions: _rand!, partype, AbstractRNG, DirichletCanon,
                       _logpdf!, rand, pdf, params, _wishart_genA!, var,
                       mean, cov, params, invcov, logdetcov, sqmahal, sqmahal!,
-                      partype, unwhiten_winv!,log2π, mvnormal_c0, _logpdf, lgamma,
-                      xlogy, NoArgCheck, suffstats, SufficientStats, GenericMvTDist,
-                      AliasTable, GLOBAL_RNG, ZeroVector
+                      partype, log2π, mvnormal_c0, _logpdf, lgamma,
+                      xlogy, suffstats, SufficientStats, GenericMvTDist,
+                      AliasTable
 
 import PDMats: unwhiten!, add!, quad, quad!
 
 using TimerOutputs
 const to = TimerOutput()
+
+# --- compatibility shims for modern Distributions / Julia versions ---
+# Distributions removed GLOBAL_RNG, ZeroVector, NoArgCheck, multiply! and
+# unwhiten_winv!. Random.GLOBAL_RNG still exists and unwhiten_winv! amounts to
+# unwhiten!(inv(W), x). These are used only in internal cluster-param sampling.
+const GLOBAL_RNG = Random.GLOBAL_RNG
+ZeroVector(T::Type{<:Real}, n::Integer) = zeros(T, n)
+function unwhiten_winv!(W::AbstractPDMat, x::AbstractVecOrMat)
+    return PDMats.unwhiten!(inv(W), x)
+end
 
 dir(path...) = joinpath(dirname(@__DIR__),path...)
 
