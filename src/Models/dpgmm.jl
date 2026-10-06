@@ -120,6 +120,14 @@ end
     MvTDist(dfn, μn, PDMat(((λn+1)/(λn*dfn)) * lowrankdowndate(((λ*m.df)/(λ+1))*m.Σ.chol,sqrt(λ/λn) * (x-m.μ))))
 end
 
+@inline function downdate_predictive(p::NormalWishart, m::Distributions.GenericMvTDist, x::AbstractVector{V}, n::Int) where {V<:Real}
+    λ   = p.λ+n
+    dfn = m.df-1
+    λn  = λ - 1
+    μn  = (λ * m.μ - x)/λn
+    MvTDist(dfn, μn, PDMat(((λn+1)/(λn*dfn)) * lowrankdowndate(((λ*m.df)/(λ+1))*m.Σ.chol,sqrt(λ/λn) * (x-m.μ))))
+end
+
 @inline function update_predictive(p::NormalWishart, m::MvTDist, x::AbstractVector{V}, n::Int) where {V<:Real}
     λ   = p.λ+n # We sart λ0=1,ν0=D+3.So df=ν-D+1 => λ=df
     dfn = m.df+1
