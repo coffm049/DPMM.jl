@@ -135,6 +135,14 @@ end
     μn  = (λ * m.μ + x)/λn
     MvTDist(dfn, μn, PDMat(((λn+1)/(λn*dfn)) * lowrankupdate(((λ*m.df)/(λ+1))*m.Σ.chol, sqrt(λ/λn) * (x-m.μ))))
 end
+
+@inline function update_predictive(p::NormalWishart, m::Distributions.GenericMvTDist, x::AbstractVector{V}, n::Int) where {V<:Real}
+    λ   = p.λ+n
+    dfn = m.df+1
+    λn  = λ + 1
+    μn  = (λ * m.μ + x)/λn
+    MvTDist(dfn, μn, PDMat(((λn+1)/(λn*dfn)) * lowrankupdate(((λ*m.df)/(λ+1))*m.Σ.chol, sqrt(λ/λn) * (x-m.μ))))
+end
 #
 # init(X::AbstractMatrix{V}, α::Real, ninit::Int, T::Type{<:DPGMM}) where V<:Real =
 #     size(X),rand(1:ninit,size(X,2)),T(V(α), vec(mean(X,dims=2)),(X*X')/size(X,2))
